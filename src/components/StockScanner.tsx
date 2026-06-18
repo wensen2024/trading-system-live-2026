@@ -183,7 +183,7 @@ export default function StockScanner({ stocks, onSelectStock, scanProgress, isSc
             <p>无匹配股票</p>
           </div>
         ) : (
-          filtered.map(stock => {
+          filtered.slice(0, 300).map(stock => {
             const cfg = SIGNAL_CONFIG[stock.signal];
             const isUp = stock.changePct >= 0;
             return (

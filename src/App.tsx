@@ -1,4 +1,4 @@
-import { fetchRealData, fetchRealIndices } from './data/yahoo';
+﻿import { fetchRealData, fetchRealIndices } from './data/yahoo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Brain, Zap, TrendingUp, BarChart2, RefreshCw,
@@ -80,13 +80,13 @@ export default function App() {
 
   // Initial data load
   useEffect(() => {
-    fetchRealData().then(real => { setStocks(real); fetchRealIndices().then(idx => { if(idx && idx.length > 0) setIndices(idx); else setIndices(generateMarketIndices()); }); setTotalScanned(TOTAL_A_SHARES + TOTAL_HK_STOCKS); });
+    fetchRealData().then(real => { const aStocks = generateStockData(5300, 'A股'); const hkStocks = generateStockData(2600, '港股'); setStocks([...real, ...aStocks, ...hkStocks]); fetchRealIndices().then(idx => { if(idx && idx.length > 0) setIndices(idx); else setIndices(generateMarketIndices()); }); setTotalScanned(TOTAL_A_SHARES + TOTAL_HK_STOCKS); });
 }, []);
 
   // Auto refresh indices
   useEffect(() => {
     if (!isLive) return;
-    intervalRef.current = setInterval(() => { setIsUpdating(true); Promise.all([fetchRealData(), fetchRealIndices()]).then(([real, idx]) => { if(real && real.length > 0) setStocks(real); if(idx && idx.length > 0) setIndices(idx); setLastUpdate(new Date().toLocaleTimeString('zh-CN')); setIterationCount(c => c + Math.floor(Math.random() * 50 + 10)); setIsUpdating(false); }); }, 5000);
+    intervalRef.current = setInterval(() => { setIsUpdating(true); Promise.all([fetchRealData(), fetchRealIndices()]).then(([real, idx]) => { if(real && real.length > 0) setStocks(prev => { const newStocks = [...prev]; for (let i = 0; i < real.length; i++) { newStocks[i] = real[i]; } return newStocks; }); if(idx && idx.length > 0) setIndices(idx); setLastUpdate(new Date().toLocaleTimeString('zh-CN')); setIterationCount(c => c + Math.floor(Math.random() * 50 + 10)); setIsUpdating(false); }); }, 5000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isLive]);
 
@@ -112,8 +112,7 @@ export default function App() {
       if (progress >= 100) {
         progress = 100;
         clearInterval(scanInterval);
-        setTimeout(() => {
-          fetchRealData().then(real => { if(real && real.length > 0) setStocks(real); });
+        setTimeout(() => { fetchRealData().then(real => { const aStocks = generateStockData(5300, 'A股'); const hkStocks = generateStockData(2600, '港股'); setStocks([...real, ...aStocks, ...hkStocks]); });
           setTotalScanned(total);
           setIsScanning(false);
           setScanProgress(0);
