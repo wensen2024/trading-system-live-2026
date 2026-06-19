@@ -80,13 +80,37 @@ export default function App() {
 
   // Initial data load
   useEffect(() => {
-    fetchRealData().then(real => { const aStocks = generateStockData(5300, 'A股'); const hkStocks = generateStockData(2600, '港股'); setStocks([...real, ...aStocks, ...hkStocks]); fetchRealIndices().then(idx => { if(idx && idx.length > 0) setIndices(idx); else setIndices(generateMarketIndices()); }); setTotalScanned(TOTAL_A_SHARES + TOTAL_HK_STOCKS); });
-}, []);
+    fetchRealData().then(stocks => {
+      if (stocks && stocks.length > 0) {
+        setStocks(stocks);
+        setTotalScanned(stocks.length);
+      }
+    });
+    fetchRealIndices().then(idx => {
+      if (idx && idx.length > 0) setIndices(idx);
+      else setIndices(generateMarketIndices());
+    });
+  }, []);
 
   // Auto refresh indices
   useEffect(() => {
     if (!isLive) return;
-    intervalRef.current = setInterval(() => { setIsUpdating(true); Promise.all([fetchRealData(), fetchRealIndices()]).then(([real, idx]) => { if(real && real.length > 0) setStocks(prev => { const newStocks = [...prev]; for (let i = 0; i < real.length; i++) { newStocks[i] = real[i]; } return newStocks; }); if(idx && idx.length > 0) setIndices(idx); setLastUpdate(new Date().toLocaleTimeString('zh-CN')); setIterationCount(c => c + Math.floor(Math.random() * 50 + 10)); setIsUpdating(false); }); }, 5000);
+    intervalRef.current = setInterval(() => {
+      setIsUpdating(true);
+      Promise.all([fetchRealData(), fetchRealIndices()]).then(([real, idx]) => {
+        if (real && real.length > 0) {
+          setStocks(prev => {
+            const realCodes = new Set(real.map(s => s.code));
+            const mockedOnly = prev.filter(s => !realCodes.has(s.code) && s.matchPattern?.[0] !== 'Realtime');
+            return [...real, ...mockedOnly];
+          });
+        }
+        if (idx && idx.length > 0) setIndices(idx);
+        setLastUpdate(new Date().toLocaleTimeString('zh-CN'));
+        setIterationCount(c => c + Math.floor(Math.random() * 50 + 10));
+        setIsUpdating(false);
+      });
+    }, 5000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isLive]);
 
@@ -112,8 +136,8 @@ export default function App() {
       if (progress >= 100) {
         progress = 100;
         clearInterval(scanInterval);
-        setTimeout(() => { fetchRealData().then(real => { const aStocks = generateStockData(5300, 'A股'); const hkStocks = generateStockData(2600, '港股'); setStocks([...real, ...aStocks, ...hkStocks]); });
-          setTotalScanned(total);
+        setTimeout(() => {
+          fetchRealData().then(stocks => { if (stocks && stocks.length > 0) { setStocks(stocks); setTotalScanned(stocks.length); } });
           setIsScanning(false);
           setScanProgress(0);
           setIterationCount(c => c + Math.floor(Math.random() * 500 + 200));
@@ -600,6 +624,7 @@ export default function App() {
           <p className="font-bold text-gray-500">⚠️ 投资风险声明</p>
           <p>本系统仅供学习研究使用，不构成任何投资建议。股市有风险，投资需谨慎。</p>
           <p>数据来源：东方财富、新浪财经、同花顺、港交所等权威机构，实时抓取仅供参考。</p>
+          <p className="pt-2 text-yellow-500/80 font-bold tracking-widest text-[13px]">由“盈指量杭州科技有限公司”设计出品</p>
         </div>
       </footer>
     </div>
