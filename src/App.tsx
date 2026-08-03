@@ -77,6 +77,7 @@ export default function App() {
   const [notifIdx, setNotifIdx] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const notifRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const portfolioRef = useRef<any>(null);
 
   // Initial data load
   useEffect(() => {
@@ -327,7 +328,10 @@ export default function App() {
               </div>
               <button
                 className="px-4 py-1.5 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-lg text-xs font-bold hover:from-red-500 hover:to-orange-500 shadow-md transition-all"
-                onClick={() => alert('一键买入信号已发送至券商API！')}
+                onClick={() => {
+                  portfolioRef.current?.addAutoPositions(strongBuyStocks);
+                  alert('一键买入信号已发送！并已按10%仓位自动分配至“持仓管理”！');
+                }}
               >
                 一键买入
               </button>
@@ -480,7 +484,7 @@ export default function App() {
         )}
 
         {activeTab === 'portfolio' && (
-          <PortfolioTracker />
+          <PortfolioTracker ref={portfolioRef} />
         )}
 
         {activeTab === 'patterns' && (
