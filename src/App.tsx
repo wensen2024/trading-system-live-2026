@@ -516,7 +516,7 @@ export default function App() {
         )}
 
         {activeTab === 'portfolio' && (
-          <PortfolioTracker ref={portfolioRef} />
+          <PortfolioTracker ref={portfolioRef} positions={positions} setPositions={setPositions} />
         )}
 
         {activeTab === 'patterns' && (
