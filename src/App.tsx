@@ -19,7 +19,13 @@ import StockScanner from './components/StockScanner';
 import StockDetail from './components/StockDetail';
 import DataSources from './components/DataSources';
 import AIPatterns from './components/AIPatterns';
-import PortfolioTracker from './components/PortfolioTracker';
+import PortfolioTracker, { Position } from './components/PortfolioTracker';
+
+const defaultPositions: Position[] = [
+  { id: '1', code: '300750', name: '宁德时代', market: 'A股', buyPrice: 218.50, currentPrice: 231.40, shares: 100, buyDate: '2025-01-06', targetPrice: 255.00, stopLoss: 208.00 },
+  { id: '2', code: '00700', name: '腾讯控股', market: '港股', buyPrice: 398.20, currentPrice: 421.60, shares: 200, buyDate: '2025-01-07', targetPrice: 460.00, stopLoss: 378.00 },
+  { id: '3', code: '688981', name: '中芯国际', market: 'A股', buyPrice: 82.30, currentPrice: 79.10, shares: 300, buyDate: '2025-01-08', targetPrice: 95.00, stopLoss: 76.00 },
+];
 
 // Weekly profit history
 const generateWeeklyHistory = () =>
@@ -54,6 +60,7 @@ type TooltipFormatter = (value: any) => [string, string];
 type TooltipFormatter2 = (value: any, name: any) => [string, string];
 
 export default function App() {
+  const [positions, setPositions] = useState<Position[]>(defaultPositions);
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [indices, setIndices] = useState<MarketIndex[]>([]);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
@@ -102,19 +109,13 @@ export default function App() {
         if (!active) return;
         if (real && real.length > 0) {
           setStocks(real);
-          
-          const buySignals = real.filter(s => s.signal === 'strong_buy' || s.signal === 'buy').length;
-          const sellSignals = real.filter(s => s.signal === 'strong_sell' || s.signal === 'sell').length;
-          const signalDelta = buySignals - sellSignals;
-          
-          setWeeklyHistory(prev => {
-             const newHistory = [...prev];
-             const last = { ...newHistory[newHistory.length - 1] };
-             last.return += (signalDelta * 0.005); 
-             last.signals += Math.floor(Math.abs(signalDelta) / 20) || 1;
-             newHistory[newHistory.length - 1] = last;
-             return newHistory;
-          });
+          setPositions(prevPos => prevPos.map(p => {
+             const liveStock = real.find(s => s.code === p.code);
+             if (liveStock) {
+               return { ...p, currentPrice: liveStock.price };
+             }
+             return p;
+          }));
         }
         if (idx && idx.length > 0) setIndices(idx);
         setLastUpdate(new Date().toLocaleTimeString('zh-CN'));
@@ -189,7 +190,19 @@ export default function App() {
   const sectorData = generateSectorData(stocks);
   const strongBuyStocks = stocks.filter(s => s.signal === 'strong_buy').slice(0, 5);
   const overallWinRate = TRADING_PATTERNS.reduce((s, p) => s + p.winRate, 0) / TRADING_PATTERNS.length;
-  const avgWeeklyReturn = weeklyHistory.reduce((s, w) => s + w.return, 0) / weeklyHistory.length;
+  
+  const totalCost = positions.reduce((sum, p) => sum + p.buyPrice * p.shares, 0);
+  const totalValue = positions.reduce((sum, p) => sum + p.currentPrice * p.shares, 0);
+  const livePnlPct = totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0;
+  
+  const displayHistory = [...weeklyHistory];
+  displayHistory[displayHistory.length - 1] = {
+    ...displayHistory[displayHistory.length - 1],
+    week: '本周(实时)',
+    return: parseFloat(livePnlPct.toFixed(2))
+  };
+
+  const avgWeeklyReturn = displayHistory.reduce((s, w) => s + w.return, 0) / displayHistory.length;
 
   const TAB_CONFIG: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'scanner', label: '智能扫股', icon: Zap },
@@ -329,7 +342,25 @@ export default function App() {
               <button
                 className="px-4 py-1.5 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-lg text-xs font-bold hover:from-red-500 hover:to-orange-500 shadow-md transition-all"
                 onClick={() => {
-                  portfolioRef.current?.addAutoPositions(strongBuyStocks);
+                  const totalCapital = 100000000;
+                  const allocateCapital = totalCapital * 0.1; // 10%
+                  const perStockCapital = allocateCapital / strongBuyStocks.length;
+                  const newPositions = strongBuyStocks.map((stock, idx) => {
+                    const shares = Math.max(100, Math.floor(perStockCapital / stock.price / 100) * 100);
+                    return {
+                      id: Date.now().toString() + idx,
+                      code: stock.code,
+                      name: stock.name,
+                      market: stock.market,
+                      buyPrice: stock.price,
+                      currentPrice: stock.price,
+                      shares: shares,
+                      buyDate: new Date().toISOString().split('T')[0],
+                      targetPrice: stock.price * 1.1,
+                      stopLoss: stock.price * 0.93,
+                    };
+                  });
+                  setPositions(prev => [...prev, ...newPositions]);
                   alert('一键买入信号已发送！并已按10%仓位自动分配至“持仓管理”！');
                 }}
               >
@@ -440,7 +471,7 @@ export default function App() {
                   <span className="text-white font-bold text-sm">周度收益回测</span>
                 </div>
                 <ResponsiveContainer width="100%" height={120}>
-                  <BarChart data={weeklyHistory.slice(-6)}>
+                  <BarChart data={displayHistory.slice(-6)}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                     <XAxis dataKey="week" tick={{ fill: '#6b7280', fontSize: 10 }} />
                     <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={v => `${v}%`} />
@@ -449,7 +480,7 @@ export default function App() {
                       formatter={fmtPct}
                     />
                     <Bar dataKey="return" radius={[4, 4, 0, 0]}>
-                      {weeklyHistory.slice(-6).map((w, i) => (
+                      {displayHistory.slice(-6).map((w, i) => (
                         <Cell key={i} fill={w.return >= 0 ? '#ef4444' : '#22c55e'} />
                       ))}
                     </Bar>
@@ -582,7 +613,7 @@ export default function App() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <BarChart2 className="w-5 h-5 text-yellow-400" />
-                  <span className="text-white font-bold text-sm">近12周收益回测</span>
+                  <span className="text-white font-bold text-sm">近12周收益回测（本周基于持仓管理实时更新）</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="text-gray-400">平均:</span>
@@ -592,7 +623,7 @@ export default function App() {
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={weeklyHistory}>
+                <AreaChart data={displayHistory}>
                   <defs>
                     <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
@@ -628,8 +659,8 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {weeklyHistory.map((w, i) => {
-                      const cumReturn = weeklyHistory
+                    {displayHistory.map((w, i) => {
+                      const cumReturn = displayHistory
                         .slice(0, i + 1)
                         .reduce((s, wk) => s * (1 + wk.return / 100), 1) - 1;
                       return (

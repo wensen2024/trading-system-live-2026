@@ -24,8 +24,7 @@ export interface PortfolioRef {
   addAutoPositions: (stocks: any[]) => void;
 }
 
-const PortfolioTracker = forwardRef<PortfolioRef, {}>((props, ref) => {
-  const [positions, setPositions] = useState<Position[]>(defaultPositions);
+const PortfolioTracker = forwardRef<PortfolioRef, {positions: Position[], setPositions: React.Dispatch<React.SetStateAction<Position[]>>}>(({positions, setPositions}, ref) => {
   const [showAdd, setShowAdd] = useState(false);
   const [newPos, setNewPos] = useState({
     code: '', name: '', market: 'A股',
