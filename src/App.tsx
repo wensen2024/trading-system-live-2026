@@ -362,6 +362,7 @@ export default function App() {
                   });
                   setPositions(prev => [...prev, ...newPositions]);
                   alert('一键买入信号已发送！并已按10%仓位自动分配至“持仓管理”！');
+                  setActiveTab('portfolio');
                 }}
               >
                 一键买入
