@@ -74,7 +74,19 @@ export default function PortfolioTracker() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-5 gap-3 mb-4">
+        <div className="bg-gray-800 rounded-xl p-3 text-center">
+          <div className="text-gray-400 text-xs mb-1">总资金</div>
+          <div className="text-white font-bold text-base">
+            100,000,000
+          </div>
+        </div>
+        <div className="bg-gray-800 rounded-xl p-3 text-center">
+          <div className="text-gray-400 text-xs mb-1">可用资金</div>
+          <div className="text-white font-bold text-base">
+            {(100000000 - totalCost).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </div>
+        </div>
         <div className="bg-gray-800 rounded-xl p-3 text-center">
           <div className="text-gray-400 text-xs mb-1">总持仓成本</div>
           <div className="text-white font-bold text-base">
