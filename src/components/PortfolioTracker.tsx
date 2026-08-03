@@ -49,7 +49,7 @@ const PortfolioTracker = forwardRef<PortfolioRef, {positions: Position[], setPos
           buyPrice: stock.price,
           currentPrice: stock.price,
           shares: shares,
-          buyDate: new Date().toISOString().split('T')[0],
+          buyDate: new Date().toLocaleString('zh-CN', { hour12: false }),
           targetPrice: stock.price * 1.1,
           stopLoss: stock.price * 0.93,
         };

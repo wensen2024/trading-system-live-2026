@@ -60,7 +60,12 @@ type TooltipFormatter = (value: any) => [string, string];
 type TooltipFormatter2 = (value: any, name: any) => [string, string];
 
 export default function App() {
-  const [positions, setPositions] = useState<Position[]>(defaultPositions);
+  const [positions, setPositions] = useState<Position[]>(() => {
+    try {
+      const saved = localStorage.getItem('trading_positions');
+      return saved ? JSON.parse(saved) : defaultPositions;
+    } catch { return defaultPositions; }
+  });
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [indices, setIndices] = useState<MarketIndex[]>([]);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
@@ -73,7 +78,12 @@ export default function App() {
   const [isLive, setIsLive] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString('zh-CN'));
   const [isUpdating, setIsUpdating] = useState(false);
-  const [weeklyHistory, setWeeklyHistory] = useState(generateWeeklyHistory());
+  const [weeklyHistory, setWeeklyHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('trading_history');
+      return saved ? JSON.parse(saved) : generateWeeklyHistory();
+    } catch { return generateWeeklyHistory(); }
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<string[]>([
     '🔥 宁德时代 MACD金叉+放量突破，强买信号！',
@@ -85,6 +95,15 @@ export default function App() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const notifRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const portfolioRef = useRef<any>(null);
+
+  // Persistence
+  useEffect(() => {
+    localStorage.setItem('trading_positions', JSON.stringify(positions));
+  }, [positions]);
+
+  useEffect(() => {
+    localStorage.setItem('trading_history', JSON.stringify(weeklyHistory));
+  }, [weeklyHistory]);
 
   // Initial data load
   useEffect(() => {
@@ -355,7 +374,7 @@ export default function App() {
                       buyPrice: stock.price,
                       currentPrice: stock.price,
                       shares: shares,
-                      buyDate: new Date().toISOString().split('T')[0],
+                      buyDate: new Date().toLocaleString('zh-CN', { hour12: false }),
                       targetPrice: stock.price * 1.1,
                       stopLoss: stock.price * 0.93,
                     };
