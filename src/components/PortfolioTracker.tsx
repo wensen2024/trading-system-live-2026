@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, forwardRef, useImperativeHandle } from 'react';
 import { Plus, Trash2, DollarSign, Target } from 'lucide-react';
 
-interface Position {
+export interface Position {
   id: string;
   code: string;
   name: string;
@@ -20,14 +20,43 @@ const defaultPositions: Position[] = [
   { id: '3', code: '688981', name: '中芯国际', market: 'A股', buyPrice: 82.30, currentPrice: 79.10, shares: 300, buyDate: '2025-01-08', targetPrice: 95.00, stopLoss: 76.00 },
 ];
 
-export default function PortfolioTracker() {
-  const [positions, setPositions] = useState<Position[]>(defaultPositions);
+export interface PortfolioRef {
+  addAutoPositions: (stocks: any[]) => void;
+}
+
+const PortfolioTracker = forwardRef<PortfolioRef, {positions: Position[], setPositions: React.Dispatch<React.SetStateAction<Position[]>>}>(({positions, setPositions}, ref) => {
   const [showAdd, setShowAdd] = useState(false);
   const [newPos, setNewPos] = useState({
     code: '', name: '', market: 'A股',
     buyPrice: '', currentPrice: '', shares: '',
     targetPrice: '', stopLoss: ''
   });
+
+  useImperativeHandle(ref, () => ({
+    addAutoPositions: (stocksToAdd) => {
+      if (stocksToAdd.length === 0) return;
+      const totalCapital = 100000000;
+      const allocateCapital = totalCapital * 0.1; // 10%
+      const perStockCapital = allocateCapital / stocksToAdd.length;
+      
+      const newPositions = stocksToAdd.map((stock, idx) => {
+        const shares = Math.max(100, Math.floor(perStockCapital / stock.price / 100) * 100);
+        return {
+          id: Date.now().toString() + idx,
+          code: stock.code,
+          name: stock.name,
+          market: stock.market,
+          buyPrice: stock.price,
+          currentPrice: stock.price,
+          shares: shares,
+          buyDate: new Date().toLocaleString('zh-CN', { hour12: false }),
+          targetPrice: stock.price * 1.1,
+          stopLoss: stock.price * 0.93,
+        };
+      });
+      setPositions(prev => [...prev, ...newPositions]);
+    }
+  }));
 
   const totalCost = positions.reduce((sum, p) => sum + p.buyPrice * p.shares, 0);
   const totalValue = positions.reduce((sum, p) => sum + p.currentPrice * p.shares, 0);
@@ -74,7 +103,19 @@ export default function PortfolioTracker() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-5 gap-3 mb-4">
+        <div className="bg-gray-800 rounded-xl p-3 text-center">
+          <div className="text-gray-400 text-xs mb-1">总资金</div>
+          <div className="text-white font-bold text-base">
+            100,000,000
+          </div>
+        </div>
+        <div className="bg-gray-800 rounded-xl p-3 text-center">
+          <div className="text-gray-400 text-xs mb-1">可用资金</div>
+          <div className="text-white font-bold text-base">
+            {(100000000 - totalCost).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </div>
+        </div>
         <div className="bg-gray-800 rounded-xl p-3 text-center">
           <div className="text-gray-400 text-xs mb-1">总持仓成本</div>
           <div className="text-white font-bold text-base">
@@ -212,4 +253,6 @@ export default function PortfolioTracker() {
       </div>
     </div>
   );
-}
+});
+
+export default PortfolioTracker;
