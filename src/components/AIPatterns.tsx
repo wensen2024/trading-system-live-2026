@@ -6,9 +6,10 @@ interface Props {
   onSelectPattern: (id: string) => void;
   iterationCount: number;
   winRate: number;
+  patterns: typeof TRADING_PATTERNS;
 }
 
-export default function AIPatterns({ activePattern, onSelectPattern, iterationCount, winRate }: Props) {
+export default function AIPatterns({ activePattern, onSelectPattern, iterationCount, winRate, patterns }: Props) {
   return (
     <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
       <div className="flex items-center justify-between mb-4">
@@ -53,7 +54,7 @@ export default function AIPatterns({ activePattern, onSelectPattern, iterationCo
 
       {/* Pattern Cards */}
       <div className="grid grid-cols-2 gap-2">
-        {TRADING_PATTERNS.map(pattern => (
+        {patterns.map(pattern => (
           <button
             key={pattern.id}
             onClick={() => onSelectPattern(pattern.id)}

@@ -73,7 +73,18 @@ export default function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [totalScanned, setTotalScanned] = useState(0);
-  const [iterationCount, setIterationCount] = useState(127834);
+  const [iterationCount, setIterationCount] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('trading_iteration_count');
+      return saved ? parseInt(saved, 10) : 127834;
+    } catch { return 127834; }
+  });
+  const [patterns, setPatterns] = useState(() => {
+    try {
+      const saved = localStorage.getItem('trading_patterns');
+      return saved ? JSON.parse(saved) : TRADING_PATTERNS;
+    } catch { return TRADING_PATTERNS; }
+  });
   const [activePattern, setActivePattern] = useState('momentum');
   const [isLive, setIsLive] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString('zh-CN'));
@@ -105,6 +116,14 @@ export default function App() {
     localStorage.setItem('trading_history', JSON.stringify(weeklyHistory));
   }, [weeklyHistory]);
 
+  useEffect(() => {
+    localStorage.setItem('trading_iteration_count', iterationCount.toString());
+  }, [iterationCount]);
+
+  useEffect(() => {
+    localStorage.setItem('trading_patterns', JSON.stringify(patterns));
+  }, [patterns]);
+
   // Initial data load
   useEffect(() => {
     fetchRealData().then(real => { 
@@ -116,6 +135,76 @@ export default function App() {
         setTotalScanned(real.length); 
     });
 }, []);
+
+  // AI Strategies automated learning and competition engine
+  const runStrategyIteration = useCallback(() => {
+    setPatterns(prevPatterns => {
+      // 1. Simulate daily performance for each strategy
+      const dailyPerformances = prevPatterns.map(p => {
+        const randomFactor = (Math.random() * 4 - 2); // -2% to +2%
+        const simulatedReturn = p.avgReturn + randomFactor;
+        const simulatedWinRate = p.winRate + (Math.random() * 6 - 3); // -3% to +3%
+        return {
+          ...p,
+          simulatedReturn,
+          simulatedWinRate
+        };
+      });
+
+      // 2. Determine today's "Winner" strategy based on simulatedReturn
+      const sortedByReturn = [...dailyPerformances].sort((a, b) => b.simulatedReturn - a.simulatedReturn);
+      const winner = sortedByReturn[0];
+
+      // 3. Other strategies learn from the winner and evolve (Genetic Parameter Tuning)
+      const learningRate = 0.05; // 5% parameter alignment per epoch
+      const updatedPatterns = prevPatterns.map(p => {
+        if (p.id === winner.id) {
+          // Winner gets a small boost for winning
+          const newWinRate = Math.min(85, p.winRate + parseFloat((Math.random() * 0.2 + 0.05).toFixed(1)));
+          const newAvgReturn = Math.min(20, p.avgReturn + parseFloat((Math.random() * 0.1 + 0.02).toFixed(2)));
+          return {
+            ...p,
+            winRate: parseFloat(newWinRate.toFixed(1)),
+            avgReturn: parseFloat(newAvgReturn.toFixed(2))
+          };
+        } else {
+          // Other strategies adjust towards the winner (Parameter optimization)
+          const alignmentWinRate = winner.winRate - p.winRate;
+          const alignmentReturn = winner.avgReturn - p.avgReturn;
+          
+          // Apply genetic mutation (small random exploration)
+          const mutationWinRate = (Math.random() * 0.6 - 0.2); // slight positive bias
+          const mutationReturn = (Math.random() * 0.2 - 0.08); // slight positive bias
+
+          let newWinRate = p.winRate + alignmentWinRate * learningRate + mutationWinRate;
+          let newAvgReturn = p.avgReturn + alignmentReturn * learningRate + mutationReturn;
+
+          // Realistic boundaries/clamping to ensure strategies stay stable and realistic
+          newWinRate = Math.max(55, Math.min(85, newWinRate));
+          newAvgReturn = Math.max(5, Math.min(20, newAvgReturn));
+
+          return {
+            ...p,
+            winRate: parseFloat(newWinRate.toFixed(1)),
+            avgReturn: parseFloat(newAvgReturn.toFixed(2))
+          };
+        }
+      });
+
+      // 4. Periodically publish a notification about the strategy competition winner
+      if (Math.random() < 0.25) { // 25% chance to update notification
+        setNotifications(prev => {
+          const newMsg = `🏆 【${winner.name}】在今日AI策略对决中胜出！单日平均收益达到 +${winner.simulatedReturn.toFixed(2)}%，其他策略已自动对齐迭代参数并保存`;
+          return [newMsg, ...prev.slice(0, 3)];
+        });
+      }
+
+      return updatedPatterns;
+    });
+
+    // Increment iteration count
+    setIterationCount(c => c + 1);
+  }, []);
 
   // Auto refresh indices
   useEffect(() => {
@@ -138,7 +227,10 @@ export default function App() {
         }
         if (idx && idx.length > 0) setIndices(idx);
         setLastUpdate(new Date().toLocaleTimeString('zh-CN'));
-        setIterationCount(c => c + Math.floor(Math.random() * 50 + 10));
+        
+        // Trigger strategy learning/iteration and auto-saving
+        runStrategyIteration();
+        
         setIsUpdating(false);
         setTimeout(refresh, 3000);
       }).catch(err => {
@@ -208,7 +300,7 @@ export default function App() {
 
   const sectorData = generateSectorData(stocks);
   const strongBuyStocks = stocks.filter(s => s.signal === 'strong_buy').slice(0, 5);
-  const overallWinRate = TRADING_PATTERNS.reduce((s, p) => s + p.winRate, 0) / TRADING_PATTERNS.length;
+  const overallWinRate = patterns.reduce((s, p) => s + p.winRate, 0) / patterns.length;
   
   const totalCost = positions.reduce((sum, p) => sum + p.buyPrice * p.shares, 0);
   const totalValue = positions.reduce((sum, p) => sum + p.currentPrice * p.shares, 0);
@@ -545,6 +637,7 @@ export default function App() {
               onSelectPattern={setActivePattern}
               iterationCount={iterationCount}
               winRate={overallWinRate}
+              patterns={patterns}
             />
             {/* Pattern Performance Chart */}
             <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
@@ -553,7 +646,7 @@ export default function App() {
                 <span className="text-white font-bold text-sm">策略胜率 & 平均收益率</span>
               </div>
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={TRADING_PATTERNS} layout="vertical" margin={{ left: 20 }}>
+                <BarChart data={patterns} layout="vertical" margin={{ left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis type="number" tick={{ fill: '#6b7280', fontSize: 10 }} />
                   <YAxis type="category" dataKey="name" tick={{ fill: '#9ca3af', fontSize: 11 }} width={70} />
@@ -572,7 +665,7 @@ export default function App() {
 
               {/* Pattern Detail */}
               {(() => {
-                const pat = TRADING_PATTERNS.find(p => p.id === activePattern);
+                const pat = patterns.find(p => p.id === activePattern);
                 if (!pat) return null;
                 return (
                   <div className="mt-4 p-4 bg-gray-800 rounded-xl border border-purple-700/40">
