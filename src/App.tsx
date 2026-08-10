@@ -20,6 +20,7 @@ import StockDetail from './components/StockDetail';
 import DataSources from './components/DataSources';
 import AIPatterns from './components/AIPatterns';
 import PortfolioTracker, { Position } from './components/PortfolioTracker';
+import Login from './components/Login';
 
 const defaultPositions: Position[] = [
   { id: '1', code: '300750', name: '宁德时代', market: 'A股', buyPrice: 218.50, currentPrice: 231.40, shares: 100, buyDate: '2025-01-06', targetPrice: 255.00, stopLoss: 208.00 },
@@ -60,6 +61,9 @@ type TooltipFormatter = (value: any) => [string, string];
 type TooltipFormatter2 = (value: any, name: any) => [string, string];
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return !!localStorage.getItem('trading_auth_token');
+  });
   const [positions, setPositions] = useState<Position[]>(() => {
     try {
       const saved = localStorage.getItem('trading_positions');
@@ -329,6 +333,10 @@ export default function App() {
     n === 'winRate' ? '胜率' : '平均收益'
   ];
   const fmtWeekPct: TooltipFormatter = (v) => [`${Number(v).toFixed(2)}%`, '周收益率'];
+
+  if (!isAuthenticated) {
+    return <Login onSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
