@@ -221,13 +221,30 @@ export default function App() {
         if (!active) return;
         if (real && real.length > 0) {
           setStocks(real);
-          setPositions(prevPos => prevPos.map(p => {
-             const liveStock = real.find(s => s.code === p.code);
-             if (liveStock) {
-               return { ...p, currentPrice: liveStock.price };
+          setPositions(prevPos => {
+             const newPos: Position[] = [];
+             const alertMsgs: string[] = [];
+             prevPos.forEach(p => {
+               const liveStock = real.find(s => s.code === p.code);
+               let newPrice = p.currentPrice;
+               if (liveStock) {
+                 newPrice = liveStock.price;
+               }
+               
+               if (newPrice >= p.targetPrice) {
+                 alertMsgs.push(`[自动盯盘-止盈卖出] ${p.name}(${p.code}) 达到目标价 ${p.targetPrice}，当前价 ${newPrice}。已自动获利了结！`);
+               } else if (newPrice <= p.stopLoss) {
+                 alertMsgs.push(`[自动盯盘-止损卖出] ${p.name}(${p.code}) 跌破止损价 ${p.stopLoss}，当前价 ${newPrice}。已自动止损离场！`);
+               } else {
+                 newPos.push({ ...p, currentPrice: newPrice });
+               }
+             });
+             if (alertMsgs.length > 0) {
+               setTimeout(() => alert(alertMsgs.join('\n')), 100);
+               setNotifications(prev => [...alertMsgs, ...prev].slice(0, 10));
              }
-             return p;
-          }));
+             return newPos;
+          });
         }
         if (idx && idx.length > 0) setIndices(idx);
         setLastUpdate(new Date().toLocaleTimeString('zh-CN'));
@@ -475,12 +492,12 @@ export default function App() {
                       currentPrice: stock.price,
                       shares: shares,
                       buyDate: new Date().toLocaleString('zh-CN', { hour12: false }),
-                      targetPrice: stock.price * 1.1,
-                      stopLoss: stock.price * 0.93,
+                      targetPrice: stock.weekTarget || parseFloat((stock.price * 1.1).toFixed(2)),
+                      stopLoss: stock.stopLoss || parseFloat((stock.price * 0.93).toFixed(2)),
                     };
                   });
                   setPositions(prev => [...prev, ...newPositions]);
-                  alert('一键买入信号已发送！并已按10%仓位自动分配至“持仓管理”！');
+                  alert('一键买入信号已发送！系统已按照当日AI目标价和止损价，自动添加至“持仓管理”并开启交易日实时盯盘功能！');
                   setActiveTab('portfolio');
                 }}
               >
