@@ -48,8 +48,8 @@ const PortfolioTracker = forwardRef<PortfolioRef, {positions: Position[], setPos
           currentPrice: stock.price,
           shares: shares,
           buyDate: new Date().toLocaleString('zh-CN', { hour12: false }),
-          targetPrice: stock.price * 1.1,
-          stopLoss: stock.price * 0.93,
+          targetPrice: Number((stock.price * 1.1582).toFixed(2)),
+          stopLoss: Number((stock.price * 0.8759).toFixed(2)),
         };
       });
       setPositions(prev => [...prev, ...newPositions]);
