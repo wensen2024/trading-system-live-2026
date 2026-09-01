@@ -1,4 +1,4 @@
-import { fetchRealData, fetchRealIndices } from './data/yahoo';
+﻿import { fetchRealData, fetchRealIndices } from './data/yahoo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Brain, Zap, TrendingUp, BarChart2, RefreshCw,
@@ -23,9 +23,7 @@ import PortfolioTracker, { Position } from './components/PortfolioTracker';
 import Login from './components/Login';
 
 const defaultPositions: Position[] = [
-  { id: '1', code: '300750', name: '宁德时代', market: 'A股', buyPrice: 218.50, currentPrice: 231.40, shares: 100, buyDate: '2025-01-06', targetPrice: 255.00, stopLoss: 208.00 },
-  { id: '2', code: '00700', name: '腾讯控股', market: '港股', buyPrice: 398.20, currentPrice: 421.60, shares: 200, buyDate: '2025-01-07', targetPrice: 460.00, stopLoss: 378.00 },
-  { id: '3', code: '688981', name: '中芯国际', market: 'A股', buyPrice: 82.30, currentPrice: 79.10, shares: 300, buyDate: '2025-01-08', targetPrice: 95.00, stopLoss: 76.00 },
+  { id: '1', code: '600103', name: '青山纸业', market: 'A股', buyPrice: 4.19, currentPrice: 4.19, shares: 10000, buyDate: '2026-08-12', targetPrice: 4.85, stopLoss: 3.67 }
 ];
 
 // Weekly profit history
@@ -210,6 +208,17 @@ export default function App() {
     setIterationCount(c => c + 1);
   }, []);
 
+  // Check if current time is within trading hours (A-shares)
+  const isTradingTime = () => {
+    const now = new Date();
+    const day = now.getDay();
+    if (day === 0 || day === 6) return false;
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const timeStr = hours * 100 + minutes;
+    return (timeStr >= 930 && timeStr <= 1130) || (timeStr >= 1300 && timeStr <= 1500);
+  };
+
   // Auto refresh indices
   useEffect(() => {
     if (!isLive) return;
@@ -231,10 +240,15 @@ export default function App() {
                  newPrice = liveStock.price;
                }
                
-               if (newPrice >= p.targetPrice) {
-                 alertMsgs.push(`[自动盯盘-止盈卖出] ${p.name}(${p.code}) 达到目标价 ${p.targetPrice}，当前价 ${newPrice}。已自动获利了结！`);
-               } else if (newPrice <= p.stopLoss) {
-                 alertMsgs.push(`[自动盯盘-止损卖出] ${p.name}(${p.code}) 跌破止损价 ${p.stopLoss}，当前价 ${newPrice}。已自动止损离场！`);
+               // Only trigger target/stop alerts during trading hours
+               if (isTradingTime()) {
+                 if (newPrice >= p.targetPrice) {
+                   alertMsgs.push(`[自动盯盘-止盈卖出] ${p.name}(${p.code}) 达到目标价 ${p.targetPrice}，当前价 ${newPrice}。已自动获利了结！`);
+                 } else if (newPrice <= p.stopLoss) {
+                   alertMsgs.push(`[自动盯盘-止损卖出] ${p.name}(${p.code}) 跌破止损价 ${p.stopLoss}，当前价 ${newPrice}。已自动止损离场！`);
+                 } else {
+                   newPos.push({ ...p, currentPrice: newPrice });
+                 }
                } else {
                  newPos.push({ ...p, currentPrice: newPrice });
                }

@@ -15,9 +15,7 @@ export interface Position {
 }
 
 const defaultPositions: Position[] = [
-  { id: '1', code: '300750', name: '宁德时代', market: 'A股', buyPrice: 218.50, currentPrice: 231.40, shares: 100, buyDate: '2025-01-06', targetPrice: 255.00, stopLoss: 208.00 },
-  { id: '2', code: '00700', name: '腾讯控股', market: '港股', buyPrice: 398.20, currentPrice: 421.60, shares: 200, buyDate: '2025-01-07', targetPrice: 460.00, stopLoss: 378.00 },
-  { id: '3', code: '688981', name: '中芯国际', market: 'A股', buyPrice: 82.30, currentPrice: 79.10, shares: 300, buyDate: '2025-01-08', targetPrice: 95.00, stopLoss: 76.00 },
+  { id: '1', code: '600103', name: '青山纸业', market: 'A股', buyPrice: 4.19, currentPrice: 4.19, shares: 10000, buyDate: '2026-08-12', targetPrice: 4.85, stopLoss: 3.67 }
 ];
 
 export interface PortfolioRef {
